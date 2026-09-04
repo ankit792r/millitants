@@ -22,7 +22,7 @@ func NewPlayer() *Player {
 	}
 }
 
-func (p *Player) UpdatePlayer(camera *rl.Camera2D, levalMap []string, dt float32) {
+func (p *Player) UpdatePlayer(camera *rl.Camera2D, levalMap *[]string, dt float32) {
 	var movement rl.Vector2
 
 	if rl.IsKeyDown(rl.KeyW) || rl.IsKeyDown(rl.KeyUp) {
@@ -72,7 +72,7 @@ func (p *Player) UpdatePlayer(camera *rl.Camera2D, levalMap []string, dt float32
 	}
 }
 
-func checkPlayerCollision(player *Player, levelMap []string) bool {
+func checkPlayerCollision(player *Player, levelMap *[]string) bool {
 	playerRect := rl.Rectangle{
 		X:      player.Position.X,
 		Y:      player.Position.Y,
@@ -80,7 +80,7 @@ func checkPlayerCollision(player *Player, levelMap []string) bool {
 		Height: player.Size.Y,
 	}
 
-	for row, line := range levelMap {
+	for row, line := range *levelMap {
 		for col, tile := range line {
 			if tile != '#' {
 				continue
