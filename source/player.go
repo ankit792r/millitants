@@ -6,8 +6,8 @@ import (
 
 const (
 	Gravity      float32 = 800
-	JetpackForce float32 = 1200
-	MaxFallSpeed float32 = 500
+	JetpackForce float32 = 1000
+	MaxFallSpeed float32 = 1000
 )
 
 type Player struct {
@@ -63,15 +63,6 @@ func (p *Player) UpdatePlayer(camera *rl.Camera2D, levelMap *[]string, dt float3
 	// Limit falling speed.
 	if p.velocityY > MaxFallSpeed {
 		p.velocityY = MaxFallSpeed
-	}
-
-	// Camera rotation.
-	if rl.IsKeyDown(rl.KeyH) {
-		camera.Rotation += 2
-	}
-
-	if rl.IsKeyDown(rl.KeyL) {
-		camera.Rotation -= 2
 	}
 
 	// Move horizontally.
