@@ -8,5 +8,7 @@ const (
 
 	PlayerHeight = 32
 	PlayerWidth  = 16
-	PlayerSpeed  = 300
+	PlayerSpeed  = 200
+
+	gravity = 0.5
 )

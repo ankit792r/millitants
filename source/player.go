@@ -1,11 +1,22 @@
 package source
 
-import rl "github.com/gen2brain/raylib-go/raylib"
+import (
+	rl "github.com/gen2brain/raylib-go/raylib"
+)
+
+const (
+	Gravity      float32 = 800
+	JetpackForce float32 = 1200
+	MaxFallSpeed float32 = 500
+)
 
 type Player struct {
 	Position rl.Vector2
 	Size     rl.Vector2
 	Speed    float32
+
+	velocityY  float32
+	isGrounded bool
 }
 
 func NewPlayer() *Player {
@@ -22,17 +33,10 @@ func NewPlayer() *Player {
 	}
 }
 
-func (p *Player) UpdatePlayer(camera *rl.Camera2D, levalMap *[]string, dt float32) {
+func (p *Player) UpdatePlayer(camera *rl.Camera2D, levelMap *[]string, dt float32) {
 	var movement rl.Vector2
 
-	if rl.IsKeyDown(rl.KeyW) || rl.IsKeyDown(rl.KeyUp) {
-		movement.Y -= 1
-	}
-
-	if rl.IsKeyDown(rl.KeyS) || rl.IsKeyDown(rl.KeyDown) {
-		movement.Y += 1
-	}
-
+	// Horizontal movement
 	if rl.IsKeyDown(rl.KeyA) || rl.IsKeyDown(rl.KeyLeft) {
 		movement.X -= 1
 	}
@@ -41,6 +45,27 @@ func (p *Player) UpdatePlayer(camera *rl.Camera2D, levalMap *[]string, dt float3
 		movement.X += 1
 	}
 
+	// Normalize diagonal movement.
+	if movement.X != 0 || movement.Y != 0 {
+		movement = rl.Vector2Normalize(movement)
+	}
+
+	movement.X *= p.Speed * dt
+
+	// Gravity.
+	p.velocityY += Gravity * dt
+
+	// Jetpack.
+	if rl.IsKeyDown(rl.KeyW) || rl.IsKeyDown(rl.KeyUp) {
+		p.velocityY -= JetpackForce * dt
+	}
+
+	// Limit falling speed.
+	if p.velocityY > MaxFallSpeed {
+		p.velocityY = MaxFallSpeed
+	}
+
+	// Camera rotation.
 	if rl.IsKeyDown(rl.KeyH) {
 		camera.Rotation += 2
 	}
@@ -49,26 +74,28 @@ func (p *Player) UpdatePlayer(camera *rl.Camera2D, levalMap *[]string, dt float3
 		camera.Rotation -= 2
 	}
 
-	// Normalize diagonal movement.
-	if movement.X != 0 || movement.Y != 0 {
-		movement = rl.Vector2Normalize(movement)
-	}
-
-	movement.X *= p.Speed * dt
-	movement.Y *= p.Speed * dt
-
-	// Move X and check collision.
+	// Move horizontally.
 	p.Position.X += movement.X
 
-	if checkPlayerCollision(p, levalMap) || checkWorldBoundary(*p) {
+	if checkPlayerCollision(p, levelMap) || checkWorldBoundary(*p) {
 		p.Position.X -= movement.X
 	}
 
-	// Move Y and check collision.
-	p.Position.Y += movement.Y
+	// Move vertically.
+	verticalMovement := p.velocityY * dt
+	p.Position.Y += verticalMovement
 
-	if checkPlayerCollision(p, levalMap) || checkWorldBoundary(*p) {
-		p.Position.Y -= movement.Y
+	if checkPlayerCollision(p, levelMap) || checkWorldBoundary(*p) {
+		p.Position.Y -= verticalMovement
+
+		// If moving downward, we hit the ground.
+		if p.velocityY > 0 {
+			p.isGrounded = true
+		}
+
+		p.velocityY = 0
+	} else {
+		p.isGrounded = false
 	}
 }
 
@@ -130,21 +157,11 @@ func checkWorldBoundary(player Player) bool {
 }
 
 func (p *Player) DrawPlayer() {
-	// Player body
 	rl.DrawRectangle(
 		int32(p.Position.X),
 		int32(p.Position.Y),
 		int32(p.Size.X),
 		int32(p.Size.Y),
 		rl.Red,
-	)
-
-	// Player outline
-	rl.DrawRectangleLines(
-		int32(p.Position.X),
-		int32(p.Position.Y),
-		int32(p.Size.X),
-		int32(p.Size.Y),
-		rl.Maroon,
 	)
 }
