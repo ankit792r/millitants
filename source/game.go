@@ -16,25 +16,20 @@ type Game struct {
 	camera *rl.Camera2D
 	level  *[]string
 
-	playBtn button
-	quitBtn button
+	menu *Menu
 }
 
 func NewGame() *Game {
 	player := NewPlayer()
 	camera := NewCamera(player)
-
-	cx := float32(ScreenWidth) / 2
-	cy := float32(ScreenHeight) / 2
+	menu := NewMenu()
 
 	return &Game{
 		scene:  SceneMenu,
 		player: player,
 		camera: camera,
 		level:  GetMap(),
-
-		playBtn: newButton(cx, cy, 240, 64, "Play"),
-		quitBtn: newButton(cx, cy+90, 240, 64, "Quit"),
+		menu:   menu,
 	}
 }
 
@@ -55,20 +50,10 @@ func (g *Game) Run() {
 func (g *Game) update(dt float32) {
 	switch g.scene {
 	case SceneMenu:
-		g.updateMenu()
+		g.menu.UpdateMenu(g)
 
 	case ScenePlay:
 		g.updateGame(dt)
-	}
-}
-
-func (g *Game) updateMenu() {
-	if g.playBtn.released() {
-		g.scene = ScenePlay
-	}
-
-	if g.quitBtn.released() {
-		rl.CloseWindow()
 	}
 }
 
@@ -97,25 +82,11 @@ func (g *Game) draw() {
 
 	switch g.scene {
 	case SceneMenu:
-		g.drawMenu()
+		g.menu.DrawMenu()
 
 	case ScenePlay:
 		g.drawGame()
 	}
-}
-
-func (g *Game) drawMenu() {
-	title := "Millitants"
-	titleSize := int32(64)
-
-	tw := rl.MeasureText(title, titleSize)
-	x := (ScreenWidth - tw) / 2
-
-	rl.DrawText(title, x+2, 222, titleSize, rl.Black)
-	rl.DrawText(title, x, 220, titleSize, rl.RayWhite)
-
-	g.playBtn.draw()
-	g.quitBtn.draw()
 }
 
 func (g *Game) drawGame() {
