@@ -1,0 +1,342 @@
+package main
+
+import (
+	"github.com/gen2brain/raylib-go/raylib"
+	"millitia/source"
+)
+
+const (
+	screenWidth  = 1000
+	screenHeight = 700
+
+	tileSize = 20
+
+	playerHeight = 32
+	playerWidth  = 16
+	playerSpeed  = 300
+)
+
+var level = []string{
+	"................................................................................................",
+	"................................................................................................",
+	"................................................................................................",
+	"................................................................................................",
+	"...........###########....................................................########..............",
+	"...........#.........#....................................................########..............",
+	"...........#.........#..............##########..................................................",
+	"...........#.........#..............#........#..................................................",
+	"....................................#........#..................................................",
+	"....................................#........#...................########.......................",
+	"....................................##########...................#......#.......................",
+	".................................................................#......#.......................",
+	".................................................................########.......................",
+	"................................................................................................",
+	".................##########.....................................................................",
+	".................#........#.....................................................................",
+	".................#........#.......................############..................................",
+	".................#........#.......................#..........#..................................",
+	"..................................................#..........#..................................",
+	"..................................................############..................................",
+	"................................................................................................",
+	"................................................................................................",
+	"................................................................................................",
+	".....................############...............................................................",
+	".....................#..........#...............................................................",
+	".....................#..........#...............................................................",
+	".....................############...............................................................",
+	"................................................................................................",
+	"................................................................................................",
+	"................................................................................................",
+	"...............................................###########......................................",
+	"...............................................#.........#......................................",
+	"...............................................#.........#......................................",
+	"...............................................###########......................................",
+	"................................................................................................",
+	"................................................................................................",
+	"................................................................................................",
+	"................................................................................................",
+	"................................................................................................",
+}
+
+func getMapWidth() float32 {
+	return float32(len(level[0]) * tileSize)
+}
+
+func getMapHeight() float32 {
+	return float32(len(level) * tileSize)
+}
+
+type Player struct {
+	Position rl.Vector2
+	Size     rl.Vector2
+	Speed    float32
+}
+
+func test() {
+	rl.InitWindow(screenWidth, screenHeight, "Raylib Go - Level + Player + Camera")
+	defer rl.CloseWindow()
+
+	rl.SetTargetFPS(60)
+
+	player := Player{
+		Position: rl.Vector2{
+			X: 20 * tileSize,
+			Y: 20 * tileSize,
+		},
+		Size: rl.Vector2{
+			X: playerWidth,
+			Y: playerHeight,
+		},
+		Speed: playerSpeed,
+	}
+
+	camera := rl.Camera2D{
+		Target:   player.Position,
+		Offset:   rl.Vector2{X: screenWidth / 2, Y: screenHeight / 2},
+		Rotation: 0,
+		Zoom:     2,
+	}
+
+	for !rl.WindowShouldClose() {
+		dt := rl.GetFrameTime()
+
+		updatePlayer(&player, &camera, dt)
+
+		// Camera follows the center of the player.
+		// camera.Target = getCameraTarget(player, camera)
+		target := getCameraTarget(player, camera)
+
+		camera.Target = rl.Vector2Lerp(
+			camera.Target,
+			target,
+			8*dt,
+		)
+
+		rl.BeginDrawing()
+		rl.ClearBackground(rl.RayWhite)
+
+		rl.BeginMode2D(camera)
+
+		drawLevel()
+		drawPlayer(player)
+
+		rl.EndMode2D()
+
+		rl.EndDrawing()
+	}
+}
+
+func updatePlayer(player *Player, camera *rl.Camera2D, dt float32) {
+	var movement rl.Vector2
+
+	if rl.IsKeyDown(rl.KeyW) || rl.IsKeyDown(rl.KeyUp) {
+		movement.Y -= 1
+	}
+
+	if rl.IsKeyDown(rl.KeyS) || rl.IsKeyDown(rl.KeyDown) {
+		movement.Y += 1
+	}
+
+	if rl.IsKeyDown(rl.KeyA) || rl.IsKeyDown(rl.KeyLeft) {
+		movement.X -= 1
+	}
+
+	if rl.IsKeyDown(rl.KeyD) || rl.IsKeyDown(rl.KeyRight) {
+		movement.X += 1
+	}
+
+	if rl.IsKeyDown(rl.KeyH) {
+		camera.Rotation += 2
+	}
+
+	if rl.IsKeyDown(rl.KeyL) {
+		camera.Rotation -= 2
+	}
+
+	// Normalize diagonal movement.
+	if movement.X != 0 || movement.Y != 0 {
+		movement = rl.Vector2Normalize(movement)
+	}
+
+	movement.X *= player.Speed * dt
+	movement.Y *= player.Speed * dt
+
+	// Move X and check collision.
+	player.Position.X += movement.X
+
+	if checkPlayerCollision(*player) || checkWorldBoundary(*player) {
+		player.Position.X -= movement.X
+	}
+
+	// Move Y and check collision.
+	player.Position.Y += movement.Y
+
+	if checkPlayerCollision(*player) || checkWorldBoundary(*player) {
+		player.Position.Y -= movement.Y
+	}
+}
+
+func checkPlayerCollision(player Player) bool {
+	playerRect := rl.Rectangle{
+		X:      player.Position.X,
+		Y:      player.Position.Y,
+		Width:  player.Size.X,
+		Height: player.Size.Y,
+	}
+
+	for row, line := range level {
+		for col, tile := range line {
+			if tile != '#' {
+				continue
+			}
+
+			wallRect := rl.Rectangle{
+				X:      float32(col * tileSize),
+				Y:      float32(row * tileSize),
+				Width:  tileSize,
+				Height: tileSize,
+			}
+
+			if rl.CheckCollisionRecs(playerRect, wallRect) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func checkWorldBoundary(player Player) bool {
+	mapWidth := getMapWidth()
+	mapHeight := getMapHeight()
+
+	// Left
+	if player.Position.X < 0 {
+		return true
+	}
+
+	// Top
+	if player.Position.Y < 0 {
+		return true
+	}
+
+	// Right
+	if player.Position.X+player.Size.X > mapWidth {
+		return true
+	}
+
+	// Bottom
+	if player.Position.Y+player.Size.Y > mapHeight {
+		return true
+	}
+
+	return false
+}
+
+func drawLevel() {
+	for row, line := range level {
+		for col, tile := range line {
+			x := float32(col * tileSize)
+			y := float32(row * tileSize)
+
+			switch tile {
+			case '#':
+				// Wall
+				rl.DrawRectangle(
+					int32(x),
+					int32(y),
+					tileSize,
+					tileSize,
+					rl.DarkGray,
+				)
+
+				// Wall border
+				// rl.DrawRectangleLines(
+				// 	int32(x),
+				// 	int32(y),
+				// 	tileSize,
+				// 	tileSize,
+				// 	rl.Gray,
+				// )
+
+			case '.':
+				// Floor
+				rl.DrawRectangle(
+					int32(x),
+					int32(y),
+					tileSize,
+					tileSize,
+					rl.Gray,
+					// rl.Color{R: 220, G: 225, B: 210, A: 255},
+				)
+
+				// Grid
+				// rl.DrawRectangleLines(
+				// 	int32(x),
+				// 	int32(y),
+				// 	tileSize,
+				// 	tileSize,
+				// 	rl.Color{R: 200, G: 205, B: 195, A: 255},
+				// )
+			}
+		}
+	}
+}
+
+func drawPlayer(player Player) {
+	// Player body
+	rl.DrawRectangle(
+		int32(player.Position.X),
+		int32(player.Position.Y),
+		int32(player.Size.X),
+		int32(player.Size.Y),
+		rl.Red,
+	)
+
+	// Player outline
+	rl.DrawRectangleLines(
+		int32(player.Position.X),
+		int32(player.Position.Y),
+		int32(player.Size.X),
+		int32(player.Size.Y),
+		rl.Maroon,
+	)
+}
+
+func getCameraTarget(player Player, camera rl.Camera2D) rl.Vector2 {
+	playerCenter := rl.Vector2{
+		X: player.Position.X + player.Size.X/2,
+		Y: player.Position.Y + player.Size.Y/2,
+	}
+
+	mapWidth := getMapWidth()
+	mapHeight := getMapHeight()
+
+	// How much of the world is visible on screen.
+	halfScreenWidth := float32(screenWidth) / (2 * camera.Zoom)
+	halfScreenHeight := float32(screenHeight) / (2 * camera.Zoom)
+
+	// Camera cannot go beyond the left/right boundaries.
+	minX := halfScreenWidth
+	maxX := mapWidth - halfScreenWidth
+
+	// Camera cannot go beyond the top/bottom boundaries.
+	minY := halfScreenHeight
+	maxY := mapHeight - halfScreenHeight
+
+	// Clamp camera to map.
+	cameraX := rl.Clamp(playerCenter.X, minX, maxX)
+	cameraY := rl.Clamp(playerCenter.Y, minY, maxY)
+
+	return rl.Vector2{
+		X: cameraX,
+		Y: cameraY,
+	}
+}
+
+func main() {
+	game := source.NewGame()
+
+	game.Run()
+
+}
