@@ -13,6 +13,7 @@ type Game struct {
 	scene Scene
 
 	player *Player
+	waapon *Weapon
 	camera *rl.Camera2D
 	level  *[]string
 
@@ -21,12 +22,14 @@ type Game struct {
 
 func NewGame() *Game {
 	player := NewPlayer()
+	weapon := NewWeapon(player.Position)
 	camera := NewCamera(player)
 	menu := NewMenu()
 
 	return &Game{
 		scene:  SceneMenu,
 		player: player,
+		waapon: weapon,
 		camera: camera,
 		level:  GetMap(),
 		menu:   menu,
@@ -64,6 +67,7 @@ func (g *Game) updateGame(dt float32) {
 	}
 
 	g.player.UpdatePlayer(g.camera, g.level, dt)
+	g.waapon.UpdateWeapon(g.player.Position, dt)
 
 	target := GetCameraTarget(*g.player, *g.camera)
 
@@ -94,6 +98,7 @@ func (g *Game) drawGame() {
 
 	DrawMap()
 	g.player.DrawPlayer()
+	g.waapon.DrawWeapon(g.player)
 
 	rl.EndMode2D()
 }
